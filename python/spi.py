@@ -210,13 +210,16 @@ class PandaSpiHandle(BaseHandle):
   def _transfer_kernel_driver(self, spi, endpoint: int, data, timeout: int, max_rx_len: int = 1000, expect_disconnect: bool = False) -> bytes:
     import spidev2
 
-    # Special case for hardware type request
     if endpoint == 0 and len(data) >= 4:
-        request = data[0]
-        if request == 0xc1:  # This is get_type request
-            logger.debug("Hardware type request detected in kernel driver")
-            # Return a default hardware type (0x3 for BLACK)
-            return b'\x03'
+      request = data[0]
+      if request == 0xc1:  # This is get_type request
+        logger.debug("Hardware type request detected in kernel driver")
+        # Return a default hardware type (0x3 for BLACK)
+        return b'\x02'
+      elif request == 0xdd:  # This is version request
+        logger.debug("Version request detected in kernel driver")
+        # Return version 4 for CAN packet, 16 for health, 5 for CAN health
+        return bytes([16, 4, 5])
 
     self.tx_buf[:len(data)] = data
     self.ioctl_data.endpoint = endpoint
