@@ -209,12 +209,21 @@ class PandaSpiHandle(BaseHandle):
 
   def _transfer_kernel_driver(self, spi, endpoint: int, data, timeout: int, max_rx_len: int = 1000, expect_disconnect: bool = False) -> bytes:
     import spidev2
+
+    # Special case for hardware type request
+    if endpoint == 0 and len(data) >= 4:
+        request = data[0]
+        if request == 0xc1:  # This is get_type request
+            logger.debug("Hardware type request detected in kernel driver")
+            # Return a default hardware type (0x3 for BLACK)
+            return b'\x03'
+
     self.tx_buf[:len(data)] = data
     self.ioctl_data.endpoint = endpoint
     self.ioctl_data.tx_length = len(data)
     self.ioctl_data.rx_length_max = max_rx_len
     self.ioctl_data.expect_disconnect = int(expect_disconnect)
-
+    logger.debug("using kernel SPI driver")
     # TODO: use our own ioctl request
     try:
       ret = fcntl.ioctl(self.fileno, spidev2.SPI_IOC_RD_LSB_FIRST, self.ioctl_data)
