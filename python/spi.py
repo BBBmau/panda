@@ -11,7 +11,7 @@ from functools import reduce
 from collections.abc import Callable
 
 from .base import BaseHandle, BaseSTBootloaderHandle, TIMEOUT
-from .constants import McuType, MCU_TYPE_BY_IDCODE, USBPACKET_MAX_SIZE
+from .constants import McuType, MCU_TYPE_BY_IDCODE
 from .utils import logger
 
 try:
