@@ -171,16 +171,8 @@ class PandaSpiHandle(BaseHandle):
 
     # TODO: use our own ioctl request
     try:
-      # SPI_IOC_RD_LSB_FIRST is 0x80016b02 in hex based on the provided decimal value
-      # but the original code used spidev2.SPI_IOC_RD_LSB_FIRST which was likely _IOR,
-      # and the panda kernel driver seems to expect a structure that might be for _IOWR or similar.
-      # The value 2147576578 (0x80016b02) corresponds to:
-      # Direction: Read (0x2 or _IOR which is (1U << _IOC_DIRSHIFT))
-      # Size: 1 byte (0x1, as __u8 from the original C definition _IOR(SPI_IOC_MAGIC, 3, __u8))
-      # Type: 'k' (SPI_IOC_MAGIC, which is 0x6b)
-      # Number: 2 (originally 3 for RD_LSB_FIRST, but Panda seems to use a custom ioctl structure)
-      # Let's use the numerical value obtained.
-      ret = fcntl.ioctl(self.fileno, 2147576578, self.ioctl_data)
+      import spidev2
+      ret = fcntl.ioctl(self.fileno, spidev2.SPI_IOC_RD_LSB_FIRST, self.ioctl_data)
     except OSError as e:
       raise PandaSpiException from e
     if ret < 0:
