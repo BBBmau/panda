@@ -97,15 +97,33 @@ class SpiDevice:
     assert speed <= self.MAX_SPEED
 
     if not os.path.exists(DEV_PATH):
-      raise PandaSpiUnavailable(f"SPI device not found: {DEV_PATH}")
+      logger.error(f"SPI device path not found: {DEV_PATH}")
+      raise PandaSpiUnavailable(f"SPI device path not found: {DEV_PATH}")
     if spidev is None:
+      logger.error("spidev Python module is not installed")
       raise PandaSpiUnavailable("spidev is not installed")
 
     with SPI_LOCK:
       if speed not in SPI_DEVICES:
-        SPI_DEVICES[speed] = spidev.SpiDev()  # pylint: disable=c-extension-no-member
-        SPI_DEVICES[speed].open(0, 0)
-        SPI_DEVICES[speed].max_speed_hz = speed
+        try:
+          dev = spidev.SpiDev()
+          logger.info(f"Attempting to open SPI device {DEV_PATH} (bus 0, device 0) at speed {speed}Hz")
+          dev.open(0, 0)  # Open bus 0, device 0
+          logger.info(f"Successfully opened SPI device {DEV_PATH}. Max speed set to {dev.max_speed_hz}Hz.")
+
+          # Verify fileno immediately after open
+          fd = dev.fileno()
+          if fd < 0:
+            logger.error(f"SPI device {DEV_PATH} opened, but fileno() returned an invalid file descriptor: {fd}")
+            dev.close() # Attempt to clean up
+            raise PandaSpiUnavailable(f"SPI device {DEV_PATH} fileno() is invalid: {fd}")
+          logger.info(f"SPI device {DEV_PATH} fileno is: {fd}")
+
+          dev.max_speed_hz = speed # Set speed after open and fileno check
+          SPI_DEVICES[speed] = dev
+        except Exception as e:
+          logger.error(f"Failed to open or configure SPI device {DEV_PATH}: {e}", exc_info=True)
+          raise PandaSpiUnavailable(f"Failed to open or configure SPI device {DEV_PATH}: {e}") from e
       self._spidev = SPI_DEVICES[speed]
 
   @contextmanager
