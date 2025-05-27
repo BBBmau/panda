@@ -189,6 +189,15 @@ class PandaSpiHandle(BaseHandle):
 
     # TODO: use our own ioctl request
     try:
+      logger.info(f"About to call ioctl. self.fileno: {self.fileno}, ioctl_data: {self.ioctl_data!r}")
+      try:
+        # Check if the file descriptor is still valid at OS level
+        stat_info = os.fstat(self.fileno)
+        logger.info(f"os.fstat on fileno {self.fileno} successful. Stat info: {stat_info}")
+      except OSError as fstat_e:
+        logger.error(f"os.fstat on fileno {self.fileno} FAILED before ioctl: {fstat_e}", exc_info=True)
+        # Optionally re-raise or handle, but for now, just log and let ioctl attempt and likely fail
+
       # SPI_IOC_RD_LSB_FIRST is 0x80016b02 in hex based on the provided decimal value
       # but the original code used spidev2.SPI_IOC_RD_LSB_FIRST which was likely _IOR,
       # and the panda kernel driver seems to expect a structure that might be for _IOWR or similar.
@@ -200,6 +209,8 @@ class PandaSpiHandle(BaseHandle):
       # Let's use the numerical value obtained.
       ret = fcntl.ioctl(self.fileno, 2147576578, self.ioctl_data)
     except OSError as e:
+      # Log the actual fileno value at the time of ioctl error
+      logger.error(f"ioctl on fileno {self.fileno} failed: {e}", exc_info=True)
       raise PandaSpiException from e
     if ret < 0:
       raise PandaSpiException(f"ioctl returned {ret}")
